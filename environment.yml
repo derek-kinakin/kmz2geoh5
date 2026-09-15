@@ -1,0 +1,16 @@
+name: clino-kmz-to-geoh5
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - gdal
+  - fiona
+  - geopandas
+  - pyproj
+  - pandas
+  - numpy
+  - hatch
+  - pytest
+  - pip
+  - pip:
+      - geoh5py

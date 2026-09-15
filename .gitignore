@@ -1,0 +1,38 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Environments
+.venv/
+venv/
+.hatch/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# geoh5 outputs generated during local testing/conversion
+*.geoh5
+
+# Editor/OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Scratch
+*.log
+
+# Large data files
+example_data/
+
+# Working files
+example_code/

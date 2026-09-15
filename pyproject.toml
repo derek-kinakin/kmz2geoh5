@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "clino-kmz-to-geoh5"
+version = "0.1.0"
+description = "Convert Google Earth KMZ files into Geoscience Analyst geoh5 workspaces."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [
+    { name = "Derek Kinakin" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+# Runtime dependencies are provisioned via the conda/mamba environment
+# (see environment.yml) because geopandas/fiona/GDAL/pyproj require
+# binary dependencies that are unreliable to install via pip on Windows.
+# They are still declared here for metadata/documentation purposes and
+# for environments where conda-forge binaries are already present.
+dependencies = [
+    "geopandas",
+    "fiona",
+    "pyproj",
+    "pandas",
+    "numpy",
+    "geoh5py",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/clino_kmz_to_geoh5"]
+
+[tool.hatch.envs.default]
+python = "3.12"
+
+[tool.hatch.envs.default.scripts]
+test = "pytest {args:tests}"
