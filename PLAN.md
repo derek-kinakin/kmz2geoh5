@@ -123,6 +123,14 @@ manual XML pass regardless).
    won't surface as geometry rows:
    - `PhotoOverlay` elements → photo placemark name, lat/lon/altitude,
      and the referenced image filename inside the KMZ.
+   - Plain `Placemark` elements with photos/files attached via an
+     `<img>`/`<a>` reference embedded in their `description` HTML (the
+     pattern used by Google Earth/Google Maps when a user attaches a
+     photo to a placemark) → same name/lat/lon/altitude/filename
+     extraction as `PhotoOverlay`. A placemark's `Style`/`IconStyle`/
+     `Icon` (its marker pin graphic) is deliberately *not* treated as an
+     attachment — only `description`-embedded references (or a rare
+     direct, non-`Style` `Icon/href` on the placemark itself) count.
    - Folder hierarchy (nested `<Folder>` names) → target geoh5py Group
      hierarchy, in case GeoPandas layer-per-folder behavior is
      incomplete/unavailable.
@@ -155,9 +163,12 @@ function/module for unit testing and reuse.
   `Placemark`/`Point`).
 - **Lines** — traverses, contacts (`Placemark`/`LineString`).
 - **Polygons** — claim boundaries, geology polygons (`Placemark`/`Polygon`).
-- **Geotagged photos** — `PhotoOverlay` placemarks (or plain photo
-  Placemarks with an `Icon/href` pointing at an embedded image), attached
-  as files on their corresponding point location in geoh5.
+- **Geotagged photos / linked attachments** — `PhotoOverlay` placemarks,
+  and plain `Placemark`s with a photo (or other file) attached via a
+  `description`-embedded `<img>`/`<a>` reference (as opposed to a
+  `Style`/`IconStyle`/`Icon` marker pin, which is never treated as an
+  attachment), attached as files on their corresponding point location in
+  geoh5. A placemark may have more than one attachment.
 - **Attributes** — `ExtendedData`/`Schema` fields and `description` text on
   any placemark, mapped to geoh5py `Data`.
 - Out of scope for v1 (explicitly deferred): building `Drillhole` objects

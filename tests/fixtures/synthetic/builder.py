@@ -69,6 +69,28 @@ def build_kml() -> str:
       </Placemark>
     </Folder>
     <Folder>
+      <name>FieldPhotos</name>
+      <Placemark>
+        <name>Field Photo Station</name>
+        <Style>
+          <IconStyle>
+            <Icon><href>icons/marker.png</href></Icon>
+          </IconStyle>
+        </Style>
+        <description><![CDATA[<img src="photos/photo2.jpg" height="300" />]]>Outcrop photo</description>
+        <Point><coordinates>-115.07,51.07,0</coordinates></Point>
+      </Placemark>
+      <Placemark>
+        <name>Marker Only Station</name>
+        <Style>
+          <IconStyle>
+            <Icon><href>icons/marker.png</href></Icon>
+          </IconStyle>
+        </Style>
+        <Point><coordinates>-115.071,51.071,0</coordinates></Point>
+      </Placemark>
+    </Folder>
+    <Folder>
       <name>Mixed</name>
       <Placemark>
         <name>Mixed Point</name>
@@ -107,12 +129,14 @@ def build_kml() -> str:
 
 
 def write_synthetic_kmz(path: Path) -> Path:
-    """Write the synthetic fixture KML (plus one bundled photo, matching
-    the "Photo With Image" placemark) to a ``.kmz`` file at ``path``."""
+    """Write the synthetic fixture KML (plus its bundled photos, matching
+    the "Photo With Image" and "Field Photo Station" placemarks) to a
+    ``.kmz`` file at ``path``."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(path, mode="w") as kmz:
         kmz.writestr("doc.kml", build_kml())
         kmz.writestr("photos/photo1.jpg", _TINY_JPEG_BYTES)
+        kmz.writestr("photos/photo2.jpg", _TINY_JPEG_BYTES)
     return path
 
 

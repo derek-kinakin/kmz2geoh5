@@ -7,9 +7,11 @@ Points, lines, and polygons from KML `Placemark` geometry are reprojected
 from WGS84 (as stored in KML) into a user-specified projected coordinate
 system (e.g. UTM) and written into a `.geoh5` workspace using `geoh5py`.
 KML folder hierarchy is preserved as nested groups, `ExtendedData`/
-`description` attributes are mapped to per-object data, and geotagged
-`PhotoOverlay` photos are attached as files on their corresponding point
-locations.
+`description` attributes are mapped to per-object data, and photos/files
+attached to placemarks — whether geotagged `PhotoOverlay` overlays or
+photos linked in a placemark's `description` (e.g. field photos attached
+via Google Earth/Google Maps) — are attached as files on their
+corresponding point locations.
 
 See [`PLAN.md`](PLAN.md) for the full design/implementation plan.
 
