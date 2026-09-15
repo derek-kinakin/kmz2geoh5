@@ -62,3 +62,19 @@ def test_marker_style_icon_href_not_used_as_attachment(synthetic_kmz: Path) -> N
     hrefs = [photo.href for photo in photos if photo.placemark_name == "Field Photo Station"]
 
     assert hrefs == ["photos/photo2.jpg"]
+
+
+def test_folder_path_reflects_enclosing_kml_folder(synthetic_kmz: Path) -> None:
+    """Each photo should record the ``/``-joined path of KML ``<Folder>``
+    names enclosing its placemark, so it can later be nested under that
+    same folder/station's geoh5 group, e.g. a photo attached inside
+    ``<Folder><name>FieldPhotos</name>`` gets ``folder_path="FieldPhotos"``.
+    Placemarks/PhotoOverlays with no enclosing ``<Folder>`` get
+    ``folder_path=None``."""
+    document = read_kmz(synthetic_kmz)
+    photos = extract_photo_placemarks(document.kml_bytes)
+    folder_paths = {photo.placemark_name: photo.folder_path for photo in photos}
+
+    assert folder_paths["Field Photo Station"] == "FieldPhotos"
+    assert folder_paths["Photo With Image"] is None
+    assert folder_paths["Photo Missing Image"] is None

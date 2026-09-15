@@ -41,6 +41,13 @@ class PhotoPlacemark:
         exports).
     :param placemark_name: The parent Placemark/PhotoOverlay's own
         ``<name>`` text (or ``"photo"`` if it has none).
+    :param folder_path: The ``"/"``-separated path of nested KML
+        ``<Folder>`` names enclosing this placemark (e.g. ``"DK 16"`` or
+        ``"Region/SubRegion"``), matching the same folder-path format
+        used by :func:`kmz2geoh5.kmz_reader.parse_folder_paths` for
+        ordinary geometry, so a photo can be nested under the same geoh5
+        group as its enclosing folder/station. ``None`` if the placemark
+        is not inside any ``<Folder>``.
     :param longitude: Longitude in decimal degrees (WGS84).
     :param latitude: Latitude in decimal degrees (WGS84).
     :param altitude: Altitude in metres, if present (else 0.0).
@@ -50,6 +57,7 @@ class PhotoPlacemark:
 
     name: str
     placemark_name: str
+    folder_path: str | None
     longitude: float
     latitude: float
     altitude: float
@@ -138,6 +146,53 @@ def _description_attachment_hrefs(element: ET.Element) -> list[str]:
     return hrefs
 
 
+def _extract_photos_from_element(
+    element: ET.Element, folder_path: str | None, photos: list[PhotoPlacemark]
+) -> None:
+    """Extract any photo/file attachment(s) from a single ``PhotoOverlay``
+    or ``Placemark`` element, appending them to ``photos``. See
+    :func:`extract_photo_placemarks` for the patterns handled."""
+    tag = _local_tag(element)
+
+    hrefs: list[str] = []
+    direct_href = _direct_icon_href(element)
+    if direct_href is not None:
+        hrefs.append(direct_href)
+    if tag == "Placemark":
+        hrefs.extend(
+            href for href in _description_attachment_hrefs(element) if href not in hrefs
+        )
+
+    if tag == "Placemark" and not hrefs:
+        # No attached photo/file; not a photo placemark, so it is left
+        # for the GeoPandas layer read to handle as ordinary geometry.
+        return
+
+    point = _find_descendant(element, "Point")
+    if point is None:
+        return
+    coords_el = _find_child(point, "coordinates")
+    if coords_el is None or not coords_el.text:
+        return
+
+    name_el = _find_child(element, "name")
+    placemark_name = name_el.text.strip() if name_el is not None and name_el.text else "photo"
+    lon, lat, alt = _parse_coordinates(coords_el.text)
+
+    for href in hrefs or [None]:
+        photos.append(
+            PhotoPlacemark(
+                name=_build_attachment_name(placemark_name, href),
+                placemark_name=placemark_name,
+                folder_path=folder_path,
+                longitude=lon,
+                latitude=lat,
+                altitude=alt,
+                href=href,
+            )
+        )
+
+
 def extract_photo_placemarks(kml_bytes: bytes) -> list[PhotoPlacemark]:
     """Find every geotagged photo/file attachment in a KML document.
 
@@ -163,6 +218,14 @@ def extract_photo_placemarks(kml_bytes: bytes) -> list[PhotoPlacemark]:
     (see :func:`_build_attachment_name`) so entries remain distinguishable
     even when multiple placemarks share the same (often generic) name.
 
+    The nested ``<Folder>`` hierarchy is walked alongside the search for
+    attachments (mirroring :func:`kmz2geoh5.kmz_reader.parse_folder_paths`)
+    so each attachment records the ``folder_path`` of its immediately
+    enclosing folder/station -- e.g. a photo attached to a placemark
+    inside ``<Folder><name>DK 16</name>...`` gets ``folder_path="DK 16"``
+    -- letting the writer nest it under that same station's geoh5 group
+    rather than a single flat top-level group for the whole document.
+
     Placemarks without a resolvable point location, or without any
     attachment, are skipped (attachment-less placemarks are handled by the
     GeoPandas layer read instead).
@@ -173,50 +236,23 @@ def extract_photo_placemarks(kml_bytes: bytes) -> list[PhotoPlacemark]:
     root = ET.fromstring(kml_bytes)
     photos: list[PhotoPlacemark] = []
 
-    for element in root.iter():
+    def _walk(element: ET.Element, ancestors: list[str]) -> None:
         tag = _local_tag(element)
-        if tag not in ("PhotoOverlay", "Placemark"):
-            continue
 
-        hrefs: list[str] = []
-        direct_href = _direct_icon_href(element)
-        if direct_href is not None:
-            hrefs.append(direct_href)
-        if tag == "Placemark":
-            hrefs.extend(
-                href for href in _description_attachment_hrefs(element) if href not in hrefs
-            )
+        new_ancestors = ancestors
+        if tag == "Folder":
+            name_el = _find_child(element, "name")
+            name_text = name_el.text.strip() if name_el is not None and name_el.text else None
+            if name_text:
+                new_ancestors = ancestors + [name_text]
+        elif tag in ("PhotoOverlay", "Placemark"):
+            folder_path = "/".join(ancestors) if ancestors else None
+            _extract_photos_from_element(element, folder_path, photos)
 
-        if tag == "Placemark" and not hrefs:
-            # No attached photo/file; not a photo placemark, so it is left
-            # for the GeoPandas layer read to handle as ordinary geometry.
-            continue
+        for child in element:
+            _walk(child, new_ancestors)
 
-        point = _find_descendant(element, "Point")
-        if point is None:
-            continue
-        coords_el = _find_child(point, "coordinates")
-        if coords_el is None or not coords_el.text:
-            continue
-
-        name_el = _find_child(element, "name")
-        placemark_name = (
-            name_el.text.strip() if name_el is not None and name_el.text else "photo"
-        )
-        lon, lat, alt = _parse_coordinates(coords_el.text)
-
-        for href in hrefs or [None]:
-            photos.append(
-                PhotoPlacemark(
-                    name=_build_attachment_name(placemark_name, href),
-                    placemark_name=placemark_name,
-                    longitude=lon,
-                    latitude=lat,
-                    altitude=alt,
-                    href=href,
-                )
-            )
-
+    _walk(root, [])
     return photos
 
 

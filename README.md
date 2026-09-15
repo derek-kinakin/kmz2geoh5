@@ -11,7 +11,10 @@ KML folder hierarchy is preserved as nested groups, `ExtendedData`/
 attached to placemarks — whether geotagged `PhotoOverlay` overlays or
 photos linked in a placemark's `description` (e.g. field photos attached
 via Google Earth/Google Maps) — are attached as files on their
-corresponding point locations.
+corresponding point locations, nested under a `Photos` sub-group of the
+same enclosing KML folder/station as the rest of that folder's geometry
+(e.g. photos for a station named "DK 16" end up under "DK 16/Photos"),
+rather than pooled into a single flat top-level `Photos` group.
 
 See [`PLAN.md`](PLAN.md) for the full design/implementation plan.
 

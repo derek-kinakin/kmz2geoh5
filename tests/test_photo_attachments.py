@@ -17,10 +17,32 @@ from kmz2geoh5 import convert
 _TARGET_EPSG = 26911
 
 
-def _photo_points_by_name(workspace: Workspace) -> dict[str, list]:
-    photos_group = next(
-        obj for obj in workspace.groups if getattr(obj, "name", None) == "Photos"
-    )
+def _find_photos_group(workspace: Workspace, folder_path: str | None = None):
+    """Find the ``Photos`` group nested under the given ``folder_path``
+    (e.g. ``"FieldPhotos"``), or the top-level ``Photos`` group directly
+    under the workspace root if ``folder_path`` is ``None``. Each distinct
+    enclosing folder gets its own ``Photos`` group (see
+    :func:`kmz2geoh5.geoh5_writer.write_photos`), so a bare name lookup is
+    not enough once more than one exists.
+    """
+    expected_parent_names = folder_path.split("/") if folder_path else []
+
+    def _parent_names(entity) -> list[str]:
+        names = []
+        parent = entity.parent
+        while parent is not None and parent is not workspace.root:
+            names.append(parent.name)
+            parent = parent.parent
+        return list(reversed(names))
+
+    for obj in workspace.groups:
+        if getattr(obj, "name", None) == "Photos" and _parent_names(obj) == expected_parent_names:
+            return obj
+    raise AssertionError(f"No 'Photos' group found for folder_path={folder_path!r}")
+
+
+def _photo_points_by_name(workspace: Workspace, folder_path: str | None = None) -> dict[str, list]:
+    photos_group = _find_photos_group(workspace, folder_path)
     return {child.name: list(child.children) for child in photos_group.children}
 
 
@@ -30,7 +52,10 @@ def test_description_embedded_photo_is_written_with_file(
     geoh5_path = convert(synthetic_kmz, tmp_path / "synthetic.geoh5", epsg=_TARGET_EPSG)
 
     with Workspace(geoh5_path) as workspace:
-        points_by_name = _photo_points_by_name(workspace)
+        # "Field Photo Station" is nested inside the "FieldPhotos" KML
+        # folder, so its photo attachment must be nested under
+        # "FieldPhotos/Photos", not a flat top-level "Photos" group.
+        points_by_name = _photo_points_by_name(workspace, folder_path="FieldPhotos")
 
         # Object name combines the placemark's own name with its attached
         # file's name (see photo_overlay._build_attachment_name).
@@ -53,7 +78,9 @@ def test_photo_overlay_with_missing_image_creates_point_without_file(
     geoh5_path = convert(synthetic_kmz, tmp_path / "synthetic.geoh5", epsg=_TARGET_EPSG)
 
     with Workspace(geoh5_path) as workspace:
-        points_by_name = _photo_points_by_name(workspace)
+        # "Photo Missing Image" is a top-level PhotoOverlay (not inside any
+        # KML Folder), so it lands in the top-level "Photos" group.
+        points_by_name = _photo_points_by_name(workspace, folder_path=None)
 
         assert "Photo Missing Image - missing" in points_by_name
         filename_children = [
@@ -75,9 +102,9 @@ def test_photo_object_names_are_unique_within_photos_group(
     geoh5_path = convert(synthetic_kmz, tmp_path / "synthetic.geoh5", epsg=_TARGET_EPSG)
 
     with Workspace(geoh5_path) as workspace:
-        photos_group = next(
-            obj for obj in workspace.groups if getattr(obj, "name", None) == "Photos"
-        )
+        # Both duplicate-named "Image" placemarks are top-level (not
+        # inside any Folder), so they share the top-level "Photos" group.
+        photos_group = _find_photos_group(workspace, folder_path=None)
         names = [child.name for child in photos_group.children]
 
         assert len(names) == len(set(names))
@@ -85,3 +112,27 @@ def test_photo_object_names_are_unique_within_photos_group(
         # start out wanting the exact same name and must be disambiguated.
         assert "Image - photo1" in names
         assert any(name != "Image - photo1" and name.startswith("Image - photo1") for name in names)
+
+
+def test_photo_nested_under_enclosing_folder_group(
+    synthetic_kmz: Path, tmp_path: Path
+) -> None:
+    """A photo attached inside a named KML folder/station should be
+    nested under that same station's geoh5 group (reusing the group
+    already created for the folder's ordinary geometry), rather than a
+    single flat top-level "Photos" group for the whole document."""
+    geoh5_path = convert(synthetic_kmz, tmp_path / "synthetic.geoh5", epsg=_TARGET_EPSG)
+
+    with Workspace(geoh5_path) as workspace:
+        field_photos_group = next(
+            obj for obj in workspace.groups if getattr(obj, "name", None) == "FieldPhotos"
+        )
+        photos_subgroup = next(
+            child for child in field_photos_group.children if child.name == "Photos"
+        )
+        assert "Field Photo Station - photo2" in [c.name for c in photos_subgroup.children]
+
+        # The document-level PhotoOverlay/duplicate-named placemarks have
+        # no enclosing folder, so they must NOT end up under
+        # "FieldPhotos/Photos".
+        assert "Photo With Image - photo1" not in [c.name for c in photos_subgroup.children]

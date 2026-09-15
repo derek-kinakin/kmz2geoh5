@@ -11,9 +11,13 @@ Group and object hierarchy:
   meshes are not built in v1, since that would require triangulating
   arbitrary (possibly concave) polygons, which is out of scope for a
   faithful geometry conversion.
-- One single-vertex ``Points`` object per geotagged photo, with the photo
-  image attached via ``add_file``, grouped under a ``Photos`` sub-group of
-  the folder the photo belongs to (or the workspace root if unknown).
+- One single-vertex ``Points`` object per geotagged photo/file attachment,
+  with the file attached via ``add_file``, grouped under a ``Photos``
+  sub-group nested inside its enclosing KML folder/station's own group
+  (e.g. a photo attached inside ``<Folder><name>DK 16</name>`` ends up at
+  ``DK 16/Photos``), so photos remain associated with the same named
+  placemark/station group as the rest of that folder's geometry. Photos
+  with no enclosing folder fall back to a top-level ``Photos`` group.
 """
 
 from __future__ import annotations
@@ -203,13 +207,22 @@ def write_photos(
     projected_coords: np.ndarray,
     namelist: list[str],
     read_member,
-    folder_hint: str | None = None,
 ) -> list[Points]:
     """Create one single-vertex Points object per geotagged photo, with the
     photo image attached as a file.
 
+    Each photo is nested under a ``Photos`` sub-group of its own enclosing
+    KML folder/station (``photo.folder_path``, e.g. ``"DK 16"``), reusing
+    the same geoh5py group already created for that folder's ordinary
+    geometry (see :func:`write_layer`) via ``group_cache`` -- so a photo
+    attached to a placemark inside a named station folder ends up nested
+    under that station's group rather than a single flat top-level
+    ``Photos`` group for the entire document. Photos with no enclosing
+    folder (``folder_path`` is ``None``) fall back to a top-level
+    ``Photos`` group under the workspace root.
+
     :param workspace: Target geoh5py Workspace.
-    :param group_cache: :class:`GroupCache` used to resolve/create the
+    :param group_cache: :class:`GroupCache` used to resolve/create each
         ``Photos`` sub-group.
     :param photos: Photo placemarks extracted from the KML document.
     :param projected_coords: Array, shape ``(len(photos), 3)``, of each
@@ -221,38 +234,48 @@ def write_photos(
         resolve each photo's ``href`` to an archive member.
     :param read_member: Callable ``(archive_member_name) -> bytes`` used to
         read the photo's image bytes out of the KMZ archive.
-    :param folder_hint: Folder path to nest the ``Photos`` group under.
     """
     if not photos:
         return []
 
-    photos_group_path = f"{folder_hint}/Photos" if folder_hint else "Photos"
-    photos_group = group_cache.get(photos_group_path)
-
-    # Photo names already combine the parent placemark's name with its
-    # attached file name (see `photo_overlay._build_attachment_name`), but
-    # that alone does not guarantee uniqueness (e.g. two placemarks
-    # referencing the same file, or several photos with no resolvable
-    # file name at all). geoh5py does not enforce sibling name uniqueness
-    # for objects on its own, and Geoscience Analyst silently renames
-    # (and warns about) duplicate names on load, so de-duplicate here
-    # against this Photos group's existing/previously-created children
-    # before each Points object is created.
-    sibling_names = [child.name for child in photos_group.children]
+    # Group photos by their enclosing folder/station so each group of
+    # siblings gets its own `Photos` sub-group and its own name-uniqueness
+    # scope, while otherwise preserving each photo's original order.
+    grouped: dict[str | None, list[tuple[PhotoPlacemark, np.ndarray]]] = {}
+    for photo, coords in zip(photos, projected_coords):
+        grouped.setdefault(photo.folder_path, []).append((photo, coords))
 
     created = []
-    for photo, coords in zip(photos, projected_coords):
-        unique_name = find_unique_name(photo.name, sibling_names)
-        sibling_names.append(unique_name)
-        point = Points.create(
-            workspace,
-            vertices=np.array([coords]),
-            name=unique_name,
-            parent=photos_group,
-        )
-        if photo.href:
-            member_name = resolve_photo_bytes(namelist, photo.href)
-            if member_name:
-                point.add_file(read_member(member_name), name=member_name.rsplit("/", 1)[-1])
-        created.append(point)
+    for folder_path, entries in grouped.items():
+        photos_group_path = f"{folder_path}/Photos" if folder_path else "Photos"
+        photos_group = group_cache.get(photos_group_path)
+
+        # Photo names already combine the parent placemark's name with
+        # its attached file name (see
+        # `photo_overlay._build_attachment_name`), but that alone does
+        # not guarantee uniqueness (e.g. two placemarks referencing the
+        # same file, or several photos with no resolvable file name at
+        # all). geoh5py does not enforce sibling name uniqueness for
+        # objects on its own, and Geoscience Analyst silently renames
+        # (and warns about) duplicate names on load, so de-duplicate
+        # here against this Photos group's existing/previously-created
+        # children before each Points object is created.
+        sibling_names = [child.name for child in photos_group.children]
+
+        for photo, coords in entries:
+            unique_name = find_unique_name(photo.name, sibling_names)
+            sibling_names.append(unique_name)
+            point = Points.create(
+                workspace,
+                vertices=np.array([coords]),
+                name=unique_name,
+                parent=photos_group,
+            )
+            if photo.href:
+                member_name = resolve_photo_bytes(namelist, photo.href)
+                if member_name:
+                    point.add_file(
+                        read_member(member_name), name=member_name.rsplit("/", 1)[-1]
+                    )
+            created.append(point)
     return created

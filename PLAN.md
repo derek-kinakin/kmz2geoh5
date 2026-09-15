@@ -147,18 +147,26 @@ manual XML pass regardless).
    - Map each attribute column to geoh5py `Data` on that object (numeric
      → float/int data, text → text data), per-vertex/per-feature as
      appropriate.
-   - For photo placemarks: match each `PhotoOverlay` entry to the nearest
-     KML `Folder`, create/reuse a `Points` object for photo locations, and
-     call `add_file()` (or the appropriate geoh5py file-association API)
-     to attach the extracted image bytes to each corresponding vertex.
-     Each `Points` object is named by combining the parent placemark's
-     own name with its attached file's name (since photo placemarks are
-     frequently all named the same generic thing, e.g. "Image", by
-     Google Earth/Google Maps), with a final de-duplication pass against
-     sibling names in the same `Photos` group (mirroring how geoh5py
-     de-duplicates sibling `Data`/`FilenameData` names) so every object
-     has a unique name and Geoscience Analyst never needs to silently
-     rename anything (with a warning) on load.
+   - For photo placemarks: match each `PhotoOverlay`/attachment entry to
+     the nearest enclosing KML `Folder` (its `folder_path`, tracked
+     during the same manual XML pass used for extraction), create/reuse
+     a `Photos` sub-group nested under that folder's own geoh5py group
+     (or a top-level `Photos` group if the placemark has no enclosing
+     folder) via the same group-path cache used for ordinary geometry,
+     and create a `Points` object for each photo location, calling
+     `add_file()` (or the appropriate geoh5py file-association API) to
+     attach the extracted image bytes. This keeps a folder's photos
+     (e.g. "DK 16") nested alongside that folder's other geometry,
+     rather than pooled into one flat top-level `Photos` group for the
+     whole document. Each `Points` object is named by combining the
+     parent placemark's own name with its attached file's name (since
+     photo placemarks are frequently all named the same generic thing,
+     e.g. "Image", by Google Earth/Google Maps), with a final
+     de-duplication pass against sibling names within its own `Photos`
+     group (mirroring how geoh5py de-duplicates sibling `Data`/
+     `FilenameData` names) so every object has a unique name and
+     Geoscience Analyst never needs to silently rename anything (with a
+     warning) on load.
 6. **Save and close** the Workspace.
 
 Top-level API: `convert(kmz_path, geoh5_path, epsg) -> Path` in
