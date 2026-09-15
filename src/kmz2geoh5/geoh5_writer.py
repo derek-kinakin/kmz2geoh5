@@ -21,6 +21,7 @@ from __future__ import annotations
 import numpy as np
 from geoh5py.groups import ContainerGroup, Group
 from geoh5py.objects import Curve, Points
+from geoh5py.shared.utils import find_unique_name
 from geoh5py.workspace import Workspace
 
 from kmz2geoh5.attributes import build_data_dict
@@ -228,12 +229,25 @@ def write_photos(
     photos_group_path = f"{folder_hint}/Photos" if folder_hint else "Photos"
     photos_group = group_cache.get(photos_group_path)
 
+    # Photo names already combine the parent placemark's name with its
+    # attached file name (see `photo_overlay._build_attachment_name`), but
+    # that alone does not guarantee uniqueness (e.g. two placemarks
+    # referencing the same file, or several photos with no resolvable
+    # file name at all). geoh5py does not enforce sibling name uniqueness
+    # for objects on its own, and Geoscience Analyst silently renames
+    # (and warns about) duplicate names on load, so de-duplicate here
+    # against this Photos group's existing/previously-created children
+    # before each Points object is created.
+    sibling_names = [child.name for child in photos_group.children]
+
     created = []
     for photo, coords in zip(photos, projected_coords):
+        unique_name = find_unique_name(photo.name, sibling_names)
+        sibling_names.append(unique_name)
         point = Points.create(
             workspace,
             vertices=np.array([coords]),
-            name=photo.name,
+            name=unique_name,
             parent=photos_group,
         )
         if photo.href:

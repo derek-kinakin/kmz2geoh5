@@ -123,6 +123,16 @@ def build_kml() -> str:
       <Icon><href>photos/missing.jpg</href></Icon>
       <Point><coordinates>-115.06,51.06,0</coordinates></Point>
     </PhotoOverlay>
+    <Placemark>
+      <name>Image</name>
+      <description><![CDATA[<img src="photos/photo1.jpg" height="300" />]]>Duplicate name 1</description>
+      <Point><coordinates>-115.08,51.08,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>Image</name>
+      <description><![CDATA[<img src="photos/photo1.jpg" height="300" />]]>Duplicate name 2</description>
+      <Point><coordinates>-115.081,51.081,0</coordinates></Point>
+    </Placemark>
   </Document>
 </kml>
 """

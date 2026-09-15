@@ -151,6 +151,14 @@ manual XML pass regardless).
      KML `Folder`, create/reuse a `Points` object for photo locations, and
      call `add_file()` (or the appropriate geoh5py file-association API)
      to attach the extracted image bytes to each corresponding vertex.
+     Each `Points` object is named by combining the parent placemark's
+     own name with its attached file's name (since photo placemarks are
+     frequently all named the same generic thing, e.g. "Image", by
+     Google Earth/Google Maps), with a final de-duplication pass against
+     sibling names in the same `Photos` group (mirroring how geoh5py
+     de-duplicates sibling `Data`/`FilenameData` names) so every object
+     has a unique name and Geoscience Analyst never needs to silently
+     rename anything (with a warning) on load.
 6. **Save and close** the Workspace.
 
 Top-level API: `convert(kmz_path, geoh5_path, epsg) -> Path` in

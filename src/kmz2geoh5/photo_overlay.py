@@ -32,8 +32,15 @@ _ABSOLUTE_REF_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:|^#")
 class PhotoPlacemark:
     """A single geotagged photo/file attachment found in a KML document.
 
-    :param name: Placemark/PhotoOverlay name (suffixed with an index if a
-        single placemark has more than one attachment).
+    :param name: A descriptive, KMZ-unique name for this attachment,
+        combining the parent Placemark/PhotoOverlay's own name with its
+        attached file's name (see :func:`_build_attachment_name`) so that
+        every attachment gets a distinct, meaningful geoh5 object name
+        even when many placemarks share the same generic name (e.g.
+        "Image", as commonly produced by Google Earth/Google Maps
+        exports).
+    :param placemark_name: The parent Placemark/PhotoOverlay's own
+        ``<name>`` text (or ``"photo"`` if it has none).
     :param longitude: Longitude in decimal degrees (WGS84).
     :param latitude: Latitude in decimal degrees (WGS84).
     :param altitude: Altitude in metres, if present (else 0.0).
@@ -42,6 +49,7 @@ class PhotoPlacemark:
     """
 
     name: str
+    placemark_name: str
     longitude: float
     latitude: float
     altitude: float
@@ -68,6 +76,30 @@ def _parse_coordinates(text: str) -> tuple[float, float, float]:
     lat = float(parts[1])
     alt = float(parts[2]) if len(parts) > 2 and parts[2] != "" else 0.0
     return lon, lat, alt
+
+
+def _build_attachment_name(placemark_name: str, href: str | None) -> str:
+    """Build a descriptive name for a photo/file attachment by combining
+    its parent placemark's name with its attached file's name.
+
+    Placemark names alone are frequently not unique -- e.g. Google Earth/
+    Google Maps commonly names every photo placemark just "Image" -- so
+    the attached file's name (its stem, without directory or extension)
+    is appended to give each attachment a distinct, still-meaningful
+    name. Uniqueness is not guaranteed by this function alone (two
+    placemarks could still reuse the same href, or a placemark could have
+    no href at all); callers should still de-duplicate against sibling
+    names before writing to geoh5.
+
+    :param placemark_name: The parent Placemark/PhotoOverlay's own name.
+    :param href: The attachment's KMZ-relative file path, if resolved.
+    :returns: ``"{placemark_name} - {file stem}"`` if ``href`` is given,
+        otherwise just ``placemark_name``.
+    """
+    if not href:
+        return placemark_name
+    file_stem = href.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+    return f"{placemark_name} - {file_stem}" if file_stem else placemark_name
 
 
 def _direct_icon_href(element: ET.Element) -> str | None:
@@ -127,7 +159,9 @@ def extract_photo_placemarks(kml_bytes: bytes) -> list[PhotoPlacemark]:
     A placemark may have more than one attachment (e.g. several photos
     embedded in its description); each becomes its own
     :class:`PhotoPlacemark` entry, sharing the placemark's location, with
-    the name suffixed by an index when there is more than one.
+    a name built from the placemark's name and the attachment's file name
+    (see :func:`_build_attachment_name`) so entries remain distinguishable
+    even when multiple placemarks share the same (often generic) name.
 
     Placemarks without a resolvable point location, or without any
     attachment, are skipped (attachment-less placemarks are handled by the
@@ -166,13 +200,21 @@ def extract_photo_placemarks(kml_bytes: bytes) -> list[PhotoPlacemark]:
             continue
 
         name_el = _find_child(element, "name")
-        name = name_el.text.strip() if name_el is not None and name_el.text else "photo"
+        placemark_name = (
+            name_el.text.strip() if name_el is not None and name_el.text else "photo"
+        )
         lon, lat, alt = _parse_coordinates(coords_el.text)
 
         for href in hrefs or [None]:
-            entry_name = name if len(hrefs) <= 1 else f"{name} ({hrefs.index(href) + 1})"
             photos.append(
-                PhotoPlacemark(name=entry_name, longitude=lon, latitude=lat, altitude=alt, href=href)
+                PhotoPlacemark(
+                    name=_build_attachment_name(placemark_name, href),
+                    placemark_name=placemark_name,
+                    longitude=lon,
+                    latitude=lat,
+                    altitude=alt,
+                    href=href,
+                )
             )
 
     return photos

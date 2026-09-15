@@ -6,7 +6,10 @@ Covers the three patterns :func:`extract_photo_placemarks` must handle:
 that attach a photo via an ``<img>``/``<a>`` reference embedded in their
 ``description`` HTML -- while making sure a placemark's ``Style``/
 ``IconStyle``/``Icon`` (its marker pin graphic) is never mistaken for an
-attached photo.
+attached photo. Also covers the resulting attachment ``name``, which
+combines the placemark's own name with its attached file's name so
+attachments remain distinguishable (and geoh5-name-unique) even when
+many placemarks share the same generic name.
 """
 
 from __future__ import annotations
@@ -20,11 +23,23 @@ from kmz2geoh5.photo_overlay import extract_photo_placemarks
 def test_photo_overlay_and_description_attachments_found(synthetic_kmz: Path) -> None:
     document = read_kmz(synthetic_kmz)
     photos = extract_photo_placemarks(document.kml_bytes)
-    by_name = {photo.name: photo.href for photo in photos}
+    by_placemark_name = {photo.placemark_name: photo.href for photo in photos}
 
-    assert by_name["Photo With Image"] == "photos/photo1.jpg"
-    assert by_name["Photo Missing Image"] == "photos/missing.jpg"
-    assert by_name["Field Photo Station"] == "photos/photo2.jpg"
+    assert by_placemark_name["Photo With Image"] == "photos/photo1.jpg"
+    assert by_placemark_name["Photo Missing Image"] == "photos/missing.jpg"
+    assert by_placemark_name["Field Photo Station"] == "photos/photo2.jpg"
+
+
+def test_attachment_name_incorporates_placemark_and_file_name(synthetic_kmz: Path) -> None:
+    """The built ``name`` should combine the placemark's own name with its
+    attached file's name, so it stays distinct/meaningful even when many
+    placemarks share the same generic placemark name."""
+    document = read_kmz(synthetic_kmz)
+    photos = extract_photo_placemarks(document.kml_bytes)
+    names = {photo.placemark_name: photo.name for photo in photos}
+
+    assert names["Photo With Image"] == "Photo With Image - photo1"
+    assert names["Field Photo Station"] == "Field Photo Station - photo2"
 
 
 def test_marker_style_icon_is_not_mistaken_for_a_photo(synthetic_kmz: Path) -> None:
@@ -33,9 +48,9 @@ def test_marker_style_icon_is_not_mistaken_for_a_photo(synthetic_kmz: Path) -> N
     photo) must not appear in the extracted photo list at all."""
     document = read_kmz(synthetic_kmz)
     photos = extract_photo_placemarks(document.kml_bytes)
-    names = {photo.name for photo in photos}
+    placemark_names = {photo.placemark_name for photo in photos}
 
-    assert "Marker Only Station" not in names
+    assert "Marker Only Station" not in placemark_names
 
 
 def test_marker_style_icon_href_not_used_as_attachment(synthetic_kmz: Path) -> None:
@@ -44,6 +59,6 @@ def test_marker_style_icon_href_not_used_as_attachment(synthetic_kmz: Path) -> N
     attachment."""
     document = read_kmz(synthetic_kmz)
     photos = extract_photo_placemarks(document.kml_bytes)
-    hrefs = [photo.href for photo in photos if photo.name == "Field Photo Station"]
+    hrefs = [photo.href for photo in photos if photo.placemark_name == "Field Photo Station"]
 
     assert hrefs == ["photos/photo2.jpg"]
