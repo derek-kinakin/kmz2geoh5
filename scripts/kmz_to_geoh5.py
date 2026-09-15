@@ -1,12 +1,12 @@
 """
-Example script using the 'clino_kmz_to_geoh5' library.
+Example script using the 'kmz2geoh5' library.
 
 """
 
 from pathlib import Path
 
 # Import dev version of library
-import clino_kmz_to_geoh5 as ck2g
+import kmz2geoh5 as ck2g
 
 # KMZ file path
 KMZ_PATH = r"C:\Users\dkinakin\OneDrive - BGC Engineering Inc\DK SFdS_2026-09-08.kmz"

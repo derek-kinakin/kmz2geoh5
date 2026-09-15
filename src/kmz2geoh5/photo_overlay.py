@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from xml.etree import ElementTree as ET
 
-from clino_kmz_to_geoh5.kmz_reader import _local_tag
+from kmz2geoh5.kmz_reader import _local_tag
 
 
 @dataclass
@@ -104,7 +104,7 @@ def extract_photo_placemarks(kml_bytes: bytes) -> list[PhotoPlacemark]:
 def resolve_photo_bytes(namelist: list[str], href: str) -> str | None:
     """Resolve a ``PhotoOverlay``/``Icon`` ``href`` against a KMZ archive's
     member names, returning the matching archive member name (suitable for
-    :meth:`clino_kmz_to_geoh5.kmz_reader.KmzDocument.read_archive_member`)
+    :meth:`kmz2geoh5.kmz_reader.KmzDocument.read_archive_member`)
     or ``None`` if no match is found.
 
     KML ``href`` values are relative paths (e.g. ``images/IMG_0001.jpg``)

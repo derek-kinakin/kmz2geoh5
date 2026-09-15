@@ -1,4 +1,4 @@
-# clino_kmz_to_geoh5
+# kmz2geoh5
 
 Convert Google Earth **KMZ** files into Geoscience Analyst **geoh5**
 workspaces.
@@ -24,7 +24,7 @@ conda-forge binaries than as pip wheels on Windows.
 mamba env create -f environment.yml
 
 # Activate it before running anything else
-mamba activate clino-kmz-to-geoh5
+mamba activate kmz2geoh5
 
 # Run tests via Hatch (uses this same active environment)
 hatch run test
@@ -35,7 +35,7 @@ If `mamba` is not available, substitute `conda` for the same commands.
 ## Usage
 
 ```python
-from clino_kmz_to_geoh5 import convert
+from kmz2geoh5 import convert
 
 convert("station_data.kmz", "station_data.geoh5", epsg=26911)
 ```

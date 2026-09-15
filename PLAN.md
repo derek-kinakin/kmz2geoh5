@@ -1,4 +1,4 @@
-# clino_kmz_to_geoh5 — Implementation Plan
+# kmz2geoh5 — Implementation Plan
 
 ## Problem
 
@@ -11,7 +11,7 @@ attribute data, and attached photos.
 
 ## Approach
 
-Build an installable Python library (`clino_kmz_to_geoh5`), managed with
+Build an installable Python library (`kmz2geoh5`), managed with
 Hatch, using GeoPandas (backed by Fiona/GDAL's KML driver) to read KML
 geometry + attributes, GeoPandas'/pyproj's `.to_crs()` for reprojection to a
 user-supplied EPSG code, and `geoh5py` to write the resulting objects/groups
@@ -24,13 +24,13 @@ later as a thin wrapper.
 
 ## 1. Repository & File Structure
 
-- Initialize git in `E:\My Drive\09 Dev\clino_kmz_to_geoh5`.
+- Initialize git in `E:\My Drive\09 Dev\kmz2geoh5`.
 - Create a dedicated **conda/mamba environment** for development (name:
-  `clino-kmz-to-geoh5`), defined in an `environment.yml` committed to the
+  `kmz2geoh5`), defined in an `environment.yml` committed to the
   repo, using **conda-forge** for the binary-heavy geospatial stack (GDAL,
   Fiona, PROJ) so we avoid pip-on-Windows wheel/binary issues:
   ```yaml
-  name: clino-kmz-to-geoh5
+  name: kmz2geoh5
   channels:
     - conda-forge
   dependencies:
@@ -53,19 +53,19 @@ later as a thin wrapper.
   for project structure/tasks/build metadata, but relies on the conda env
   (rather than Hatch's own isolated venv) to supply GDAL/Fiona/pyproj
   binaries — document this in the README so contributors always
-  `conda activate clino-kmz-to-geoh5` (or `mamba activate ...`) before
+  `conda activate kmz2geoh5` (or `mamba activate ...`) before
   running `hatch run ...`.
 - Use Hatch (`hatch new`/`hatch-init` equivalent) to scaffold a src-layout
   package:
   ```
-  clino_kmz_to_geoh5/
+  kmz2geoh5/
     environment.yml            # conda/mamba dev environment (GDAL/Fiona/geopandas/pyproj/hatch/pytest)
     pyproject.toml            # Hatch build backend, metadata, dependencies
     README.md
     LICENSE
     .gitignore
     src/
-      clino_kmz_to_geoh5/
+      kmz2geoh5/
         __init__.py
         kmz_reader.py         # unzip KMZ, load KML via GeoPandas, manual XML pass
         photo_overlay.py       # PhotoOverlay + geotagged-photo extraction
@@ -162,7 +162,7 @@ function/module for unit testing and reuse.
   any placemark, mapped to geoh5py `Data`.
 - Out of scope for v1 (explicitly deferred): building `Drillhole` objects
   from collar placemarks (existing prototype in
-  `clino_kmz_to_geoh5.py` kept as reference for a future iteration),
+  `kmz2geoh5.py` kept as reference for a future iteration),
   `GroundOverlay`/image-drape overlays, `NetworkLink`/`Tour` elements,
   and KML styling (icons/colors) beyond what's needed to locate photos.
 
@@ -211,7 +211,7 @@ function/module for unit testing and reuse.
     `PhotoOverlay` with a missing image, mixed geometry types in one
     folder, invalid EPSG code.
 - Hatch-managed test environment/script (`hatch run test`) wired into
-  `pyproject.toml`, run from inside the `clino-kmz-to-geoh5` conda/mamba
+  `pyproject.toml`, run from inside the `kmz2geoh5` conda/mamba
   environment (activate it first so GDAL/Fiona/pyproj binaries resolve
   correctly).
 

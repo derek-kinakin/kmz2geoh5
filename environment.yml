@@ -1,4 +1,4 @@
-name: clino-kmz-to-geoh5
+name: kmz2geoh5
 channels:
   - conda-forge
 dependencies:

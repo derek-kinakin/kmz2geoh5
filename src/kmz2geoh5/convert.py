@@ -9,10 +9,10 @@ import numpy as np
 from geoh5py.workspace import Workspace
 from shapely.geometry import Point
 
-from clino_kmz_to_geoh5 import crs
-from clino_kmz_to_geoh5.geoh5_writer import GroupCache, write_layer, write_photos
-from clino_kmz_to_geoh5.kmz_reader import parse_folder_paths, read_kmz
-from clino_kmz_to_geoh5.photo_overlay import extract_photo_placemarks
+from kmz2geoh5 import crs
+from kmz2geoh5.geoh5_writer import GroupCache, write_layer, write_photos
+from kmz2geoh5.kmz_reader import parse_folder_paths, read_kmz
+from kmz2geoh5.photo_overlay import extract_photo_placemarks
 
 
 def convert(kmz_path: str | Path, geoh5_path: str | Path, epsg: int) -> Path:
@@ -52,8 +52,8 @@ def convert(kmz_path: str | Path, geoh5_path: str | Path, epsg: int) -> Path:
         }
         workspace.root.add_comment(
             f"Converted from '{kmz_path.name}' to EPSG:{epsg} ({target_crs.name}) "
-            "by clino_kmz_to_geoh5.",
-            author="clino_kmz_to_geoh5",
+            "by kmz2geoh5.",
+            author="kmz2geoh5",
         )
 
         group_cache = GroupCache(workspace)

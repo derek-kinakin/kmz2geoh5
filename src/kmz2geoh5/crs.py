@@ -12,7 +12,7 @@ from __future__ import annotations
 import geopandas as gpd
 import pyproj
 
-from clino_kmz_to_geoh5.kmz_reader import KML_CRS
+from kmz2geoh5.kmz_reader import KML_CRS
 
 
 def validate_epsg(epsg: int) -> pyproj.CRS:

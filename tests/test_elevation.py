@@ -21,7 +21,7 @@ import numpy as np
 import pytest
 from geoh5py.workspace import Workspace
 
-from clino_kmz_to_geoh5 import convert
+from kmz2geoh5 import convert
 
 # EPSG:26911 = NAD83 / UTM zone 11N, a projected CRS whose 2D transform does
 # not touch the z coordinate, so any change in z after conversion would

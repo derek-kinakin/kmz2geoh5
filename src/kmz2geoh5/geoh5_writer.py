@@ -3,7 +3,7 @@
 Group and object hierarchy:
 
 - One nested ``geoh5py`` ``ContainerGroup`` per KML folder path (see
-  :func:`clino_kmz_to_geoh5.kmz_reader.parse_folder_paths`).
+  :func:`kmz2geoh5.kmz_reader.parse_folder_paths`).
 - One object per geometry type present in a folder/layer: a ``Points``
   object for point features, a ``Curve`` for line features. Polygon
   features are also written as a ``Curve`` describing each polygon's
@@ -23,8 +23,8 @@ from geoh5py.groups import ContainerGroup, Group
 from geoh5py.objects import Curve, Points
 from geoh5py.workspace import Workspace
 
-from clino_kmz_to_geoh5.attributes import build_data_dict
-from clino_kmz_to_geoh5.photo_overlay import PhotoPlacemark, resolve_photo_bytes
+from kmz2geoh5.attributes import build_data_dict
+from kmz2geoh5.photo_overlay import PhotoPlacemark, resolve_photo_bytes
 
 
 class GroupCache:
