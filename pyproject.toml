@@ -18,11 +18,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-# Runtime dependencies are provisioned via the conda/mamba environment
-# (see environment.yml) because geopandas/fiona/GDAL/pyproj require
-# binary dependencies that are unreliable to install via pip on Windows.
-# They are still declared here for metadata/documentation purposes and
-# for environments where conda-forge binaries are already present.
 dependencies = [
     "geopandas",
     "fiona",

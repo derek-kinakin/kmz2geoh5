@@ -16,26 +16,20 @@ same enclosing KML folder/station as the rest of that folder's geometry
 (e.g. photos for a station named "DK 16" end up under "DK 16/Photos"),
 rather than pooled into a single flat top-level `Photos` group.
 
-See [`PLAN.md`](PLAN.md) for the full design/implementation plan.
+## Installation
 
-## Development setup
-
-This project uses a dedicated conda/mamba environment because
-`geopandas`/`fiona`/`GDAL`/`pyproj` are far more reliable to install as
-conda-forge binaries than as pip wheels on Windows.
+Install the latest development version directly from GitHub:
 
 ```powershell
-# Create the environment (from the repo root)
-mamba env create -f environment.yml
-
-# Activate it before running anything else
-mamba activate kmz2geoh5
-
-# Run tests via Hatch (uses this same active environment)
-hatch run test
+pip install "kmz2geoh5 @ git+https://github.com/derek-kinakin/kmz2geoh5.git"
 ```
 
-If `mamba` is not available, substitute `conda` for the same commands.
+To install a specific release once version tags are available, append the tag
+to the repository URL:
+
+```powershell
+pip install "kmz2geoh5 @ git+https://github.com/derek-kinakin/kmz2geoh5.git@v0.1.0"
+```
 
 ## Usage
 
@@ -47,4 +41,4 @@ convert("station_data.kmz", "station_data.geoh5", epsg=26911)
 
 ## Status
 
-Early development. See [`PLAN.md`](PLAN.md) for scope and roadmap.
+Early development.
