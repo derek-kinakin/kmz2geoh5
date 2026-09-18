@@ -12,7 +12,9 @@ import pandas as pd
 _VERTEX = "VERTEX"
 
 
-def build_data_dict(gdf, exclude: tuple[str, ...] = ("geometry",)) -> dict:
+def build_data_dict(
+    gdf, exclude: tuple[str, ...] = ("geometry", "description")
+) -> dict:
     """Convert a GeoDataFrame's attribute columns into a geoh5py
     ``add_data`` payload.
 
@@ -24,7 +26,10 @@ def build_data_dict(gdf, exclude: tuple[str, ...] = ("geometry",)) -> dict:
 
     :param gdf: GeoDataFrame (or plain DataFrame) whose non-geometry
         columns should be mapped to geoh5py data.
-    :param exclude: Column names to skip (defaults to just ``geometry``).
+    :param exclude: Column names to skip (defaults to ``geometry`` and
+        ``description`` -- the latter is instead attached as a geoh5
+        ``Comments`` entry per feature, see
+        :func:`kmz2geoh5.geoh5_writer.add_feature_comments`).
     :returns: Dict suitable for passing to
         ``geoh5py.objects.ObjectBase.add_data``, keyed by column name.
     """

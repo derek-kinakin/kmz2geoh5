@@ -29,7 +29,12 @@ from geoh5py.shared.utils import find_unique_name
 from geoh5py.workspace import Workspace
 
 from kmz2geoh5.attributes import build_data_dict
+from kmz2geoh5.descriptions import clean_description_html
 from kmz2geoh5.photo_overlay import PhotoPlacemark, resolve_photo_bytes
+
+# Column GeoPandas' KML driver uses for a placemark's <name>, used to
+# attribute each description-derived comment to its source feature.
+_NAME_COLUMN = "Name"
 
 
 class GroupCache:
@@ -84,6 +89,37 @@ def _points_vertices(geometry_series) -> np.ndarray:
     )
 
 
+def add_feature_comments(obj, gdf) -> None:
+    """Attach each feature's KML ``description`` (if any) to ``obj`` as a
+    geoh5 ``Comments`` entry, one comment per row of ``gdf``.
+
+    ``obj`` (a ``Points``/``Curve`` object) typically aggregates many KML
+    placemarks/features into a single geoh5 entity, so rather than a
+    single comment for the whole object, each non-empty, HTML-stripped
+    description (see
+    :func:`kmz2geoh5.descriptions.clean_description_html`) becomes its own
+    comment, attributed (via the comment's ``Author`` field) to its source
+    feature's own ``Name`` so it stays traceable once several comments
+    live on the same object.
+
+    :param obj: A geoh5py entity supporting ``add_comment`` (e.g.
+        ``Points``, ``Curve``).
+    :param gdf: GeoDataFrame with one row per feature to attribute a
+        comment to (for a ``Curve``, this should be a per-feature/
+        per-part frame, not one row per rendered vertex).
+    """
+    if "description" not in gdf.columns:
+        return
+
+    names = gdf[_NAME_COLUMN] if _NAME_COLUMN in gdf.columns else None
+    for row_idx, description in enumerate(gdf["description"]):
+        text = clean_description_html(description)
+        if not text:
+            continue
+        author = names.iloc[row_idx] if names is not None else None
+        obj.add_comment(text, author=author or None)
+
+
 def write_points(workspace: Workspace, parent: Group | None, name: str, gdf) -> Points:
     """Create a geoh5py ``Points`` object from a GeoDataFrame of Point
     geometries, with all non-geometry columns mapped to vertex data."""
@@ -92,6 +128,7 @@ def write_points(workspace: Workspace, parent: Group | None, name: str, gdf) -> 
     data = build_data_dict(gdf)
     if data:
         points.add_data(data)
+    add_feature_comments(points, gdf)
     return points
 
 
@@ -127,6 +164,7 @@ def write_lines(workspace: Workspace, parent: Group | None, name: str, gdf) -> C
     data = build_data_dict(expanded_gdf)
     if data:
         curve.add_data(data)
+    add_feature_comments(curve, per_vertex_gdf)
     return curve
 
 
@@ -159,6 +197,7 @@ def write_polygons(workspace: Workspace, parent: Group | None, name: str, gdf) -
     data = build_data_dict(expanded_gdf)
     if data:
         curve.add_data(data)
+    add_feature_comments(curve, per_vertex_gdf)
     return curve
 
 
@@ -277,5 +316,7 @@ def write_photos(
                     point.add_file(
                         read_member(member_name), name=member_name.rsplit("/", 1)[-1]
                     )
+            if photo.description:
+                point.add_comment(photo.description, author=photo.placemark_name)
             created.append(point)
     return created

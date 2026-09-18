@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from html import unescape
 from xml.etree import ElementTree as ET
 
+from kmz2geoh5.descriptions import clean_description_html
 from kmz2geoh5.kmz_reader import _local_tag
 
 # Matches <img ... src="...">, used to find photos embedded in a
@@ -53,6 +54,11 @@ class PhotoPlacemark:
     :param altitude: Altitude in metres, if present (else 0.0).
     :param href: Path of the referenced file inside the KMZ archive,
         relative to the KML document, if one could be resolved.
+    :param description: The placemark/overlay's KML ``description``,
+        already stripped of HTML markup (see
+        :func:`kmz2geoh5.descriptions.clean_description_html`), or ``""``
+        if it had none or nothing meaningful remained after stripping the
+        embedded photo/anchor markup.
     """
 
     name: str
@@ -62,6 +68,7 @@ class PhotoPlacemark:
     latitude: float
     altitude: float
     href: str | None
+    description: str = ""
 
 
 def _find_child(element: ET.Element, tag: str) -> ET.Element | None:
@@ -179,6 +186,11 @@ def _extract_photos_from_element(
     placemark_name = name_el.text.strip() if name_el is not None and name_el.text else "photo"
     lon, lat, alt = _parse_coordinates(coords_el.text)
 
+    description_el = _find_child(element, "description")
+    description = clean_description_html(
+        description_el.text if description_el is not None else None
+    )
+
     for href in hrefs or [None]:
         photos.append(
             PhotoPlacemark(
@@ -189,6 +201,7 @@ def _extract_photos_from_element(
                 latitude=lat,
                 altitude=alt,
                 href=href,
+                description=description,
             )
         )
 
