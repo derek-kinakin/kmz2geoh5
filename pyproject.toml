@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kmz2geoh5"
-version = "0.1.0"
+version = "0.2.0"
 description = "Convert Google Earth KMZ files into Geoscience Analyst geoh5 workspaces."
 readme = "README.md"
 license = "MIT"
