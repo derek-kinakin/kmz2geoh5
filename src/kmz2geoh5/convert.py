@@ -9,8 +9,8 @@ import numpy as np
 from geoh5py.workspace import Workspace
 from shapely.geometry import Point
 
-from kmz2geoh5 import crs
-from kmz2geoh5.geoh5_writer import GroupCache, write_layer, write_photos
+from kmz2geoh5 import crs, fieldmove
+from kmz2geoh5.geoh5_writer import GroupCache, write_layer, write_locality, write_photos
 from kmz2geoh5.kmz_reader import parse_folder_paths, read_kmz
 from kmz2geoh5.photo_overlay import extract_photo_placemarks
 
@@ -62,7 +62,10 @@ def convert(kmz_path: str | Path, geoh5_path: str | Path, epsg: int) -> Path:
             projected = crs.reproject(gdf, epsg)
             folder_path = folder_paths.get(layer_name, layer_name)
             parent = group_cache.get(folder_path)
-            write_layer(workspace, parent, layer_name, projected)
+            if fieldmove.is_locality_layer(layer_name, gdf):
+                write_locality(workspace, parent, layer_name, projected)
+            else:
+                write_layer(workspace, parent, layer_name, projected)
 
         if photos:
             photo_points = gpd.GeoDataFrame(

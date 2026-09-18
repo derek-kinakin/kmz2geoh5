@@ -18,11 +18,20 @@ Group and object hierarchy:
   ``DK 16/Photos``), so photos remain associated with the same named
   placemark/station group as the rest of that folder's geometry. Photos
   with no enclosing folder fall back to a top-level ``Photos`` group.
+- Folders following the FieldMove Clino "locality" convention (see
+  :mod:`kmz2geoh5.fieldmove` and :func:`write_locality`) instead get a
+  richer split: the station point itself, a ``"{name} Notes"`` object for
+  free-text field observations, and a ``"{name} Planes"`` object with
+  parsed dip/dip-direction structural data -- rather than one
+  flat ``Points`` object mixing all of a station's placemarks together.
+  This is purely additive: any KMZ not matching that convention still
+  goes through the generic per-geometry-type path above unchanged.
 """
 
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 from geoh5py.groups import ContainerGroup, Group
 from geoh5py.objects import Curve, Points
 from geoh5py.shared.utils import find_unique_name
@@ -30,6 +39,7 @@ from geoh5py.workspace import Workspace
 
 from kmz2geoh5.attributes import build_data_dict
 from kmz2geoh5.descriptions import clean_description_html
+from kmz2geoh5.fieldmove import split_locality_layer
 from kmz2geoh5.photo_overlay import PhotoPlacemark, resolve_photo_bytes
 
 # Column GeoPandas' KML driver uses for a placemark's <name>, used to
@@ -236,6 +246,48 @@ def write_layer(workspace: Workspace, parent: Group | None, layer_name: str, gdf
         suffix = _SUFFIX_BY_KIND[geom_type]
         name = f"{layer_name} {suffix}" if len(geom_types) > 1 else layer_name
         objects.append(writer(workspace, parent, name, subset))
+    return objects
+
+
+def write_locality(workspace: Workspace, parent: Group | None, layer_name: str, gdf) -> list:
+    """Write a FieldMove Clino "locality" folder (see
+    :mod:`kmz2geoh5.fieldmove`) with role-based geoh5 structure instead of
+    one flat, undifferentiated ``Points`` object per station:
+
+    - the station's own location (plus any unrecognized/"other"
+      placemarks) as a ``Points`` object named ``layer_name``, matching
+      the generic pipeline's naming so downstream tooling/tests do not
+      need to special-case FieldMove Clino output;
+    - a dedicated ``"{layer_name} Notes"`` object for ``"Note"``
+      placemarks (free-text field observations, attached as ``Comments``
+      the same way as any other description);
+    - a dedicated ``"{layer_name} Planes"`` object for ``"Plane"``
+      placemarks, with parsed ``Dip``/``Dip Direction``/``Declination``/
+      ``Lithology``/``Structure Type`` values written as proper numeric/text ``Data`` fields
+      (rather than left buried in free-text descriptions), so structural
+      readings are directly usable by Geoscience Analyst.
+
+    ``"Image"``/``"Photo"`` placemarks are intentionally not written
+    here at all -- they are already fully handled by
+    :func:`write_photos`, which creates a sibling ``Photos`` sub-group
+    for the same folder.
+
+    :returns: List of the geoh5py objects created for this locality.
+    """
+    split = split_locality_layer(layer_name, gdf)
+    objects = []
+
+    main_frames = [f for f in (split.locality, split.other) if not f.empty]
+    if main_frames:
+        main_gdf = pd.concat(main_frames)
+        objects.append(write_points(workspace, parent, layer_name, main_gdf))
+
+    if not split.notes.empty:
+        objects.append(write_points(workspace, parent, f"{layer_name} Notes", split.notes))
+
+    if not split.planes.empty:
+        objects.append(write_points(workspace, parent, f"{layer_name} Planes", split.planes))
+
     return objects
 
 

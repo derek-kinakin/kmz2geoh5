@@ -113,6 +113,33 @@ def build_kml() -> str:
         </Placemark>
       </Folder>
     </Folder>
+    <Folder>
+      <name>DK 1</name>
+      <Placemark>
+        <name>DK 1</name>
+        <Point><coordinates>-115.09,51.09,0</coordinates></Point>
+      </Placemark>
+      <Placemark>
+        <name>Note</name>
+        <description>Parallel structures on north wall</description>
+        <Point><coordinates>-115.0901,51.0901,0</coordinates></Point>
+      </Placemark>
+      <Placemark>
+        <name>Image</name>
+        <description><![CDATA[<img src="photos/locality_photo.jpg" height="300" />]]>Outcrop overview</description>
+        <Point><coordinates>-115.0902,51.0902,0</coordinates></Point>
+      </Placemark>
+      <Placemark>
+        <name>35°</name>
+        <description>35° / 245°&#10;RHY&#10;Bedding&#10;&#10;&#10;Declination: -4.99°</description>
+        <Point><coordinates>-115.0903,51.0903,0</coordinates></Point>
+      </Placemark>
+      <Placemark>
+        <name>68°</name>
+        <description>68° / 205°&#10;QMD&#10;Joint&#10;&#10;&#10;Declination: -4.99°</description>
+        <Point><coordinates>-115.0904,51.0904,0</coordinates></Point>
+      </Placemark>
+    </Folder>
     <PhotoOverlay>
       <name>Photo With Image</name>
       <Icon><href>photos/photo1.jpg</href></Icon>
@@ -147,6 +174,7 @@ def write_synthetic_kmz(path: Path) -> Path:
         kmz.writestr("doc.kml", build_kml())
         kmz.writestr("photos/photo1.jpg", _TINY_JPEG_BYTES)
         kmz.writestr("photos/photo2.jpg", _TINY_JPEG_BYTES)
+        kmz.writestr("photos/locality_photo.jpg", _TINY_JPEG_BYTES)
     return path
 
 
