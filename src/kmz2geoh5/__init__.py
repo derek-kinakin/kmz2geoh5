@@ -3,4 +3,4 @@
 from kmz2geoh5.convert import convert
 
 __all__ = ["convert"]
-__version__ = "0.3.0"
+__version__ = "0.3.1"
