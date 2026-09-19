@@ -53,7 +53,6 @@ _DESCRIPTION_COLUMN = "description"
 #: Role identifiers for a locality folder's non-station placemarks.
 ROLE_NOTE = "note"
 ROLE_IMAGE = "image"
-ROLE_PLANE = "plane"
 
 # Case-insensitive placemark <name> values recognized as a specific role
 # by name alone. "photo" is accepted as a synonym for "image" since it is

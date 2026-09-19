@@ -30,6 +30,8 @@ Group and object hierarchy:
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
+
 import numpy as np
 import pandas as pd
 from geoh5py.groups import ContainerGroup, Group
@@ -142,17 +144,26 @@ def write_points(workspace: Workspace, parent: Group | None, name: str, gdf) -> 
     return points
 
 
-def write_lines(workspace: Workspace, parent: Group | None, name: str, gdf) -> Curve:
-    """Create a geoh5py ``Curve`` object from a GeoDataFrame of LineString
-    (or MultiLineString) geometries."""
+def _build_curve(
+    workspace: Workspace,
+    parent: Group | None,
+    name: str,
+    gdf,
+    parts_for_geometry: Callable[..., Iterable[np.ndarray]],
+) -> Curve:
+    """Shared vertex/cell/data assembly for :func:`write_lines` and
+    :func:`write_polygons`: both build a ``Curve`` out of one or more
+    coordinate "parts" per source feature (a LineString's own coords, or
+    a Polygon's exterior ring), differing only in how those parts are
+    pulled out of each row's geometry -- supplied here via
+    ``parts_for_geometry``.
+    """
     all_coords: list[np.ndarray] = []
     part_lengths: list[int] = []
     row_indices: list[int] = []
 
     for row_idx, geometry in enumerate(gdf.geometry):
-        line_strings = geometry.geoms if geometry.geom_type == "MultiLineString" else [geometry]
-        for line in line_strings:
-            coords = np.asarray(line.coords)
+        for coords in parts_for_geometry(geometry):
             if coords.shape[1] == 2:
                 coords = np.column_stack([coords, np.zeros(len(coords))])
             all_coords.append(coords)
@@ -178,37 +189,26 @@ def write_lines(workspace: Workspace, parent: Group | None, name: str, gdf) -> C
     return curve
 
 
+def _line_parts(geometry) -> Iterable[np.ndarray]:
+    line_strings = geometry.geoms if geometry.geom_type == "MultiLineString" else [geometry]
+    return (np.asarray(line.coords) for line in line_strings)
+
+
+def _polygon_parts(geometry) -> Iterable[np.ndarray]:
+    polygons = geometry.geoms if geometry.geom_type == "MultiPolygon" else [geometry]
+    return (np.asarray(polygon.exterior.coords) for polygon in polygons)
+
+
+def write_lines(workspace: Workspace, parent: Group | None, name: str, gdf) -> Curve:
+    """Create a geoh5py ``Curve`` object from a GeoDataFrame of LineString
+    (or MultiLineString) geometries."""
+    return _build_curve(workspace, parent, name, gdf, _line_parts)
+
+
 def write_polygons(workspace: Workspace, parent: Group | None, name: str, gdf) -> Curve:
     """Create a geoh5py ``Curve`` describing the exterior boundary ring of
     each Polygon (or MultiPolygon) geometry in ``gdf``."""
-    all_coords: list[np.ndarray] = []
-    part_lengths: list[int] = []
-    row_indices: list[int] = []
-
-    for row_idx, geometry in enumerate(gdf.geometry):
-        polygons = geometry.geoms if geometry.geom_type == "MultiPolygon" else [geometry]
-        for polygon in polygons:
-            coords = np.asarray(polygon.exterior.coords)
-            if coords.shape[1] == 2:
-                coords = np.column_stack([coords, np.zeros(len(coords))])
-            all_coords.append(coords)
-            part_lengths.append(len(coords))
-            row_indices.append(row_idx)
-
-    vertices = np.vstack(all_coords)
-    cells, parts = _line_cells(part_lengths)
-    curve = Curve.create(
-        workspace, vertices=vertices, cells=cells, parts=parts, name=name, parent=parent
-    )
-    per_vertex_gdf = gdf.iloc[row_indices].reset_index(drop=True)
-    expanded_gdf = per_vertex_gdf.loc[per_vertex_gdf.index.repeat(part_lengths)].reset_index(
-        drop=True
-    )
-    data = build_data_dict(expanded_gdf)
-    if data:
-        curve.add_data(data)
-    add_feature_comments(curve, per_vertex_gdf)
-    return curve
+    return _build_curve(workspace, parent, name, gdf, _polygon_parts)
 
 
 _GEOMETRY_WRITERS = {

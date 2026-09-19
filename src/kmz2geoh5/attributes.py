@@ -4,7 +4,6 @@ standard fields as surfaced by GeoPandas) onto geoh5py ``Data`` entries.
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
 # Association value used for all attribute data created by this library:
